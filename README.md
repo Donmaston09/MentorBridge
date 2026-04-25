@@ -58,24 +58,6 @@ To choose a different database file, set:
 export MENTORBRIDGE_DB_PATH=/absolute/path/to/mentorbridge.db
 ```
 
-For Render, mount a persistent disk and point `MENTORBRIDGE_DB_PATH` to that mount path so registrations and bookings survive restarts.
-
-## Render Deployment
-
-This repo now includes [render.yaml](/Users/ao0028/Desktop/MentorBridge_app/render.yaml) with:
-
-- Start command:
-  `streamlit run app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true`
-- Persistent disk mount:
-  `/var/data`
-- Persistent database path:
-  `MENTORBRIDGE_DB_PATH=/var/data/mentorbridge.db`
-
-Important:
-
-- Render persistent disks are available only on paid services, so the Blueprint uses the `starter` plan.
-- If you deploy manually in the Render dashboard instead of using the Blueprint, use the same start command and mount the disk at `/var/data`.
-
 ---
 
 ## Demo Accounts
