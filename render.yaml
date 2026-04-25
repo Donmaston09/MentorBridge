@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: mentorbridge-app
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true
+    autoDeployTrigger: commit
+    envVars:
+      - key: MENTORBRIDGE_DB_PATH
+        value: /var/data/mentorbridge.db
+    disk:
+      name: mentorbridge-data
+      mountPath: /var/data
+      sizeGB: 1
