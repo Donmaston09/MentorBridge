@@ -129,7 +129,11 @@ Replace the scoring function with:
 - Creator support link: [paypal.me/Onoja412](https://paypal.me/Onoja412)
 
 ### Email Notifications
-- SendGrid or AWS SES → confirmation emails on booking
+- Current app support: SMTP-based OTP emails and booking invites
+- Configure these environment variables:
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`
+- Optional:
+  `SMTP_FROM_NAME`, `SMTP_USE_TLS`, `APP_BASE_URL`
 
 ### Persistent Storage
 - Current: SQLite via `mentorbridge.db`

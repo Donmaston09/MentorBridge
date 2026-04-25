@@ -1,5 +1,6 @@
 import streamlit as st
 import datetime
+from utils.emailer import email_is_configured, send_booking_invites
 from utils.matching import rank_mentors, score_match
 from utils.meetings import generate_calendar_event
 from utils.storage import replace_matches, save_session, save_mentor
@@ -166,4 +167,10 @@ def _booking_form(student: dict, mentor: dict):
         save_mentor(mentor)
         st.success(f"🎉 Session booked for **{session_date} at {time}** on {platform}!")
         st.markdown(f"**Meeting link:** [{saved_event['link']}]({saved_event['link']})")
-        st.info("A confirmation email would be sent to both parties in production.")
+        sent, message = send_booking_invites(student, mentor, saved_event)
+        if sent:
+            st.success("Calendar invite emails were sent to both the mentor and the mentee.")
+        elif email_is_configured():
+            st.warning(f"The session was booked, but invite emails could not be sent: {message}")
+        else:
+            st.info("The session was booked. Set SMTP environment variables to email invites automatically.")
