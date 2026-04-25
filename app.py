@@ -355,7 +355,15 @@ with st.sidebar:
     st.markdown("---")
 
     if not st.session_state.logged_in:
-        page = st.radio("Navigate", ["🏠 Home", "📝 Register", "🔑 Login"])
+        public_pages = ["🏠 Home", "📝 Register", "🔑 Login"]
+        current_page = st.session_state.get("current_page", "🏠 Home")
+        if current_page not in public_pages:
+            current_page = "🏠 Home"
+        page = st.radio(
+            "Navigate",
+            public_pages,
+            index=public_pages.index(current_page),
+        )
         st.session_state.current_page = page
     else:
         role = st.session_state.user_role
@@ -364,20 +372,28 @@ with st.sidebar:
         st.markdown("---")
 
         if role == "student":
-            page = st.radio("Navigate", [
+            private_pages = [
                 "🏠 Dashboard",
                 "👤 My Profile",
                 "🤝 Find Mentors",
                 "📅 My Sessions",
-            ])
+            ]
         else:
-            page = st.radio("Navigate", [
+            private_pages = [
                 "🏠 Dashboard",
                 "👤 My Profile",
                 "🎓 My Students",
                 "📅 My Sessions",
                 "⚙️ Availability",
-            ])
+            ]
+        current_page = st.session_state.get("current_page", "🏠 Dashboard")
+        if current_page not in private_pages:
+            current_page = "🏠 Dashboard"
+        page = st.radio(
+            "Navigate",
+            private_pages,
+            index=private_pages.index(current_page),
+        )
         st.session_state.current_page = page
 
         st.markdown("---")
