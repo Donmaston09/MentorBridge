@@ -1,20 +1,44 @@
 import streamlit as st
 import hashlib, datetime
+import secrets
 from utils.cv_parser import extract_cv_text, parse_skills_from_text
 from utils.storage import save_student, save_mentor
 
+
+def _generate_otp() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _issue_pending_mentor_otp() -> str:
+    otp = _generate_otp()
+    st.session_state.pending_mentor["otp_code"] = otp
+    st.session_state.pending_mentor["otp_issued_at"] = datetime.datetime.utcnow().isoformat()
+    return otp
+
+
 def render():
     if st.session_state.get("pending_mentor"):
+        if not st.session_state.pending_mentor.get("otp_code"):
+            _issue_pending_mentor_otp()
+
         st.markdown("## 🔐 Verify Your Email")
-        st.info(f"We have sent a 6-digit OTP code to **{st.session_state.pending_mentor['email']}**.\n\n*(For this demo, the code is **123456**)*")
+        st.info(
+            f"We have sent a 6-digit OTP code to **{st.session_state.pending_mentor['email']}**."
+        )
+        st.caption(
+            f"Demo OTP preview: `{st.session_state.pending_mentor['otp_code']}`"
+        )
         
         otp = st.text_input("Enter OTP Code")
         if st.button("Verify & Create Account"):
-            if otp == "123456":
+            if otp == st.session_state.pending_mentor.get("otp_code"):
                 email = st.session_state.pending_mentor['email']
                 name = st.session_state.pending_mentor['name']
-                st.session_state.mentors[email] = st.session_state.pending_mentor
-                save_mentor(st.session_state.pending_mentor)
+                mentor_payload = dict(st.session_state.pending_mentor)
+                mentor_payload.pop("otp_code", None)
+                mentor_payload.pop("otp_issued_at", None)
+                st.session_state.mentors[email] = mentor_payload
+                save_mentor(mentor_payload)
                 del st.session_state.pending_mentor
                 
                 st.success(f"✅ Welcome, {name}! Your mentor profile is live.")
@@ -24,6 +48,10 @@ def render():
                     st.rerun()
             else:
                 st.error("Invalid OTP code. Please try again.")
+        if st.button("Resend OTP"):
+            new_otp = _issue_pending_mentor_otp()
+            st.success(f"A new OTP has been generated for {st.session_state.pending_mentor['email']}.")
+            st.caption(f"Demo OTP preview: `{new_otp}`")
         if st.button("← Cancel & Back"):
             del st.session_state.pending_mentor
             st.rerun()
@@ -213,6 +241,7 @@ def render():
                     "avatar": first[0].upper() + last[0].upper(),
                     "rating": None, "total_sessions": 0,
                 }
+                _issue_pending_mentor_otp()
                 st.rerun()
 
             if role_key == "student":
