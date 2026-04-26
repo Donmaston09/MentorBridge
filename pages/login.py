@@ -1,6 +1,6 @@
 import streamlit as st
 import hashlib
-from utils.storage import save_student, save_mentor
+from utils.storage import load_mentors, load_students, save_student, save_mentor
 
 def render():
     st.markdown("## 🔑 Log In")
@@ -16,7 +16,8 @@ def render():
 
         if s_sub:
             ph = hashlib.sha256(s_pass.encode()).hexdigest()
-            students = st.session_state.get("students", {})
+            students = load_students()
+            st.session_state.students = students
             if s_email in students and students[s_email]["password"] == ph:
                 st.session_state.logged_in = True
                 st.session_state.user_role = "student"
@@ -36,7 +37,8 @@ def render():
 
         if m_sub:
             ph = hashlib.sha256(m_pass.encode()).hexdigest()
-            mentors = st.session_state.get("mentors", {})
+            mentors = load_mentors()
+            st.session_state.mentors = mentors
             if m_email in mentors and mentors[m_email]["password"] == ph:
                 st.session_state.logged_in = True
                 st.session_state.user_role = "mentor"

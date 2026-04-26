@@ -85,6 +85,16 @@ def load_all_data() -> tuple[dict, dict, list, dict]:
     return students, mentors, sessions, matches
 
 
+def load_students() -> dict:
+    students, _, _, _ = load_all_data()
+    return students
+
+
+def load_mentors() -> dict:
+    _, mentors, _, _ = load_all_data()
+    return mentors
+
+
 def save_student(student: dict) -> None:
     _save_payload("students", student["email"], student)
 

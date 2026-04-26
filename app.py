@@ -338,13 +338,11 @@ for k, v in defaults.items():
         st.session_state[k] = v
 
 init_db()
-if not st.session_state.get("data_loaded"):
-    students, mentors, sessions, matches = load_all_data()
-    st.session_state.students = students
-    st.session_state.mentors = mentors
-    st.session_state.sessions = sessions
-    st.session_state.matches = matches
-    st.session_state.data_loaded = True
+students, mentors, sessions, matches = load_all_data()
+st.session_state.students = students
+st.session_state.mentors = mentors
+st.session_state.sessions = sessions
+st.session_state.matches = matches
 
 # ── sidebar navigation ────────────────────────────────────────────────────────
 with st.sidebar:
