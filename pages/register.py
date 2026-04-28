@@ -29,7 +29,10 @@ def render():
         )
         if otp_delivery_warning:
             st.warning(f"OTP email could not be sent yet: {otp_delivery_warning}")
-        if not email_is_configured():
+            st.caption(
+                f"Fallback OTP preview (since email failed): `{st.session_state.pending_mentor['otp_code']}`"
+            )
+        elif not email_is_configured():
             st.caption(
                 f"SMTP is not configured yet, so the demo OTP preview is shown here: `{st.session_state.pending_mentor['otp_code']}`"
             )
