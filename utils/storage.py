@@ -8,8 +8,14 @@ from __future__ import annotations
 
 import json
 import os
+import logging
+import socket
+from urllib.parse import urlparse
 from sqlalchemy import create_engine, Column, String, Integer, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.exc import OperationalError as SAOperationalError
+
+_logger = logging.getLogger(__name__)
 
 # On Render, provide the DATABASE_URL environment variable pointing to a PostgreSQL instance.
 # Defaults to a local SQLite database for local development.
@@ -19,6 +25,59 @@ db_url = os.getenv("DATABASE_URL", "sqlite:///mentorbridge.db")
 # It must be 'postgresql://' instead.
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+# Validate DB host early to provide a clearer error than an opaque SQLAlchemy/psycopg2 DNS error.
+# If the hostname is a short token (no dot) it is likely missing the Render domain suffix
+# (for example: use dpg-xxxx.region-postgres.render.com, not just dpg-xxxx).
+
+def _validate_and_maybe_fallback(url: str) -> str:
+    """Validate that the DB host resolves. Return the (possibly unchanged) URL.
+
+    If the host part looks malformed (no dot) or DNS lookup fails, raise a helpful
+    RuntimeError explaining how to fix DATABASE_URL. If the environment variable
+    ALLOW_DB_FALLBACK=1 is set, fall back to a local sqlite DB instead of raising.
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+
+    # Nothing to validate for sqlite or other non-network schemes
+    if hostname is None:
+        return url
+
+    # Quick heuristic: require a dot in the hostname (FQDN). If missing, it's probably truncated.
+    if "." not in hostname:
+        msg = (
+            f"Configured DATABASE_URL host looks incomplete: '{hostname}'.\n"
+            "On Render you must use the full host name (for example: 'dpg-xxxx.region-postgres.render.com').\n"
+            "Please update the DATABASE_URL environment variable to the full connection string from your Render Postgres dashboard."
+        )
+        if os.getenv("ALLOW_DB_FALLBACK") == "1":
+            _logger.warning("%s Falling back to sqlite because ALLOW_DB_FALLBACK=1.", msg)
+            return "sqlite:///mentorbridge.db"
+        raise RuntimeError(msg)
+
+    # Try to resolve the hostname to provide a clearer error if DNS fails.
+    try:
+        socket.gethostbyname(hostname)
+    except OSError as e:
+        msg = (
+            f"Could not resolve database host '{hostname}': {e}.\n"
+            "This usually means the DATABASE_URL is incorrect or DNS/networking prevents resolving the host.\n"
+            "On Render copy the full connection string from the database dashboard (it typically ends with '.render.com')."
+        )
+        if os.getenv("ALLOW_DB_FALLBACK") == "1":
+            _logger.warning("%s Falling back to sqlite because ALLOW_DB_FALLBACK=1.", msg)
+            return "sqlite:///mentorbridge.db"
+        raise RuntimeError(msg)
+
+    return url
+
+# Validate and possibly adjust the DB URL before creating the engine.
+try:
+    db_url = _validate_and_maybe_fallback(db_url)
+except Exception:
+    # Re-raise so the startup logs show a clear, actionable message instead of the raw psycopg2 DNS error.
+    raise
 
 # SQLite requires specific arguments to allow multi-threading, which Streamlit needs.
 engine_args = {}
@@ -50,7 +109,16 @@ class MatchModel(Base):
     mentor_emails = Column(Text, nullable=False)
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except SAOperationalError as e:
+        # Provide a friendlier message for operational errors (DNS, auth, network).
+        _logger.exception("Database initialization failed: %s", e)
+        raise RuntimeError(
+            "Failed to connect to the database during init_db().\n"
+            "Check your DATABASE_URL environment variable and ensure the DB host is reachable.\n"
+            "If you're deploying on Render, copy the full connection string from the database dashboard (it includes the .render.com host)."
+        ) from e
 
 def load_all_data() -> tuple[dict, dict, list, dict]:
     with SessionLocal() as db:
